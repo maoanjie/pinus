@@ -31,9 +31,31 @@ export namespace Protocol {
    * msg String data
    * return Message Object
    */
-  export function strdecode(buffer: object) {
+  export function strdecode(buffer: ArrayBuffer) {
       // encoding defaults to 'utf8'
-      return buffer.toString();
+      // return buffer.toString();
+    let bytes = new Uint8Array(buffer);
+    let array = [];
+    let offset = 0;
+    let charCode = 0;
+    let end = bytes.length;
+    while (offset < end) {
+      if (bytes[offset] < 128) {
+        charCode = bytes[offset];
+        offset += 1;
+      } else if (bytes[offset] < 224) {
+        charCode = ((bytes[offset] & 0x3f) << 6) + (bytes[offset + 1] & 0x3f);
+        offset += 2;
+      } else if (bytes[offset] < 240) {
+        charCode = ((bytes[offset] & 0x0f) << 12) + ((bytes[offset + 1] & 0x3f) << 6) + (bytes[offset + 2] & 0x3f);
+        offset += 3;
+      } else if (bytes[offset] < 256) {
+        charCode = ((bytes[offset] & 0x07) << 18) + ((bytes[offset + 1] & 0x3f) << 12) + ((bytes[offset + 2] & 0x3f) << 6) + (bytes[offset + 3] & 0x3f);
+        offset += 4;
+      }
+      array.push(charCode);
+    }
+    return String.fromCodePoint ? String.fromCodePoint.apply(null, array) : String.fromCharCode.apply(null, array);
   }
 }
 

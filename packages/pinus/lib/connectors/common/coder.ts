@@ -1,4 +1,4 @@
-import { Message } from 'pinus-protocol';
+import { Message, Protocol } from 'pinus-protocol';
 import * as  Constants from '../../util/constants';
 import { getLogger } from 'pinus-logger';
 import { IConnector } from '../../interfaces/IConnector';
@@ -40,7 +40,8 @@ let decode = function (this: any ,  msg: any) {
         msg.body = this.decodeIO_protobuf.decode(route, msg.body);
     } else {
         try {
-            msg.body = JSON.parse(msg.body.toString('utf8'));
+            // msg.body = JSON.parse(msg.body.toString('utf8'));
+            msg.body = JSON.parse(Protocol.strdecode(msg.body));
         } catch (ex) {
             msg.body = {};
         }
