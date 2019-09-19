@@ -9,13 +9,13 @@ import * as path from 'path';
 let logger = getLogger('pinus', path.basename(__filename));
 
 let FRONTEND_SESSION_FIELDS = ['id', 'frontendId', 'uid', '__sessionService__'];
-let EXPORTED_SESSION_FIELDS = ['id', 'frontendId', 'uid', 'settings'];
+let EXPORTED_SESSION_FIELDS = ['id', 'frontendId', 'uid', 'settings', 'remoteAddress'];
 
 let ST_INITED = 0;
 let ST_CLOSED = 1;
 
 export interface SessionServiceOptions {
-    singleSession?: Session;
+    singleSession?: boolean;
 }
 
 /**
@@ -30,7 +30,7 @@ export interface SessionServiceOptions {
  * @constructor
  */
 export class SessionService {
-    singleSession: Session;
+    singleSession: boolean;
     sessions: { [sid: number]: Session };
     uidMap: { [uid: string]: Session[] };
 

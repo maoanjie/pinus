@@ -237,6 +237,7 @@ export class BackendSession implements ISession {
     frontendId: string;
     settings: { [key: string]: any };
     __sessionService__: BackendSessionService;
+    remoteAddress: {ip:string, port:number};
 
     constructor(opts: any, service: BackendSessionService) {
         for (let f in opts) {
