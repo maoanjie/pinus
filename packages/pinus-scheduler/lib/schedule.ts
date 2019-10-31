@@ -88,15 +88,24 @@ function excuteJob() {
 
     while (!!job && (job.excuteTime() - Date.now()) < accuracy) {
         job.run();
-        queue.pop();
+        let jboInMap = map[job.id];
+        if (!!jboInMap) {
+            queue.pop();
 
-        let nextTime = job.nextTime();
+            let nextTime = job.nextTime();
 
-        if (nextTime === null) {
-            delete map[job.id];
-        } else {
-            queue.offer({ id: job.id, time: nextTime });
+            if (nextTime === null) {
+                delete map[job.id];
+            } else {
+                queue.offer({ id: job.id, time: nextTime });
+            }
         }
+        else {
+            if (queue.peek() && queue.peek().id === job.id) {
+                queue.pop();
+            }
+        }
+
         job = peekNextJob();
     }
 
