@@ -3,21 +3,20 @@
  * Init and start server instance.
  */
 import { getLogger } from 'pinus-logger';
-import * as fs from 'fs';
 import * as path from 'path';
 import * as pathUtil from '../util/pathUtil';
 import * as Loader from 'pinus-loader';
+import { LoaderPathType } from 'pinus-loader';
 import * as utils from '../util/utils';
 import * as schedule from 'pinus-scheduler';
 import { default as events } from '../util/events';
 import * as Constants from '../util/constants';
+import { RouteRecord } from '../util/constants';
 import { FilterService } from '../common/service/filterService';
-import { HandlerService, HandlerServiceOptions, HandlerCallback } from '../common/service/handlerService';
+import { HandlerCallback, HandlerService, HandlerServiceOptions } from '../common/service/handlerService';
 import { Application } from '../application';
 import { EventEmitter } from 'events';
-import { RouteRecord } from '../util/constants';
-import { FrontendSession, BackendSession } from '../index';
-import { LoaderPathType } from 'pinus-loader';
+import { BackendSession, FrontendSession } from '../index';
 
 let logger = getLogger('pinus', path.basename(__filename));
 
@@ -85,10 +84,13 @@ export class Server extends EventEmitter {
         this.state = ST_STARTED;
     }
 
-    loadCrons(manualReload = false) {
+    loadCrons(manualReload = false, clear = false) {
         if (manualReload) {
             logger.info('loadCrons remove crons', this.crons);
             this.removeCrons(this.crons);
+            if (clear) {
+                this.crons = [];
+            }
         }
         this.cronHandlers = loadCronHandlers(this.app, manualReload);
         loadCrons(this, this.app, manualReload);
@@ -123,7 +125,12 @@ export class Server extends EventEmitter {
 
         let routeRecord = parseRoute(msg.route);
         if (!routeRecord) {
-            utils.invokeCallback(cb, new Error(`meet unknown route message ${msg.route}`));
+            utils.invokeCallback(cb, new Error(`meet unknown route message ${ msg.route }`));
+            return;
+        }
+        if (routeRecord.method === 'constructor') {
+            logger.warn('attack session:', session, msg);
+            this.app.sessionService.kickBySessionId(session.id, 'attack');
             return;
         }
 
@@ -196,12 +203,14 @@ export class Server extends EventEmitter {
 }
 
 // 重置 crons 缓存，  手动添加的crons只会取消任务重新加载任务。
-export function manualReloadCrons(app: Application) {
+// clear 控制重新加载之前是否先清除原有的.
+// 有的 cron 是通过运行时动态添加进来的. 所以不能直接清除, 所以只能添加选项自己来控制
+export function manualReloadCrons(app: Application, clear = false) {
     if (!app.components.__server__) {
         return;
     }
     logger.info('manualReloadCrons start');
-    app.components.__server__.server.loadCrons(true);
+    app.components.__server__.server.loadCrons(true, clear);
     logger.info('manualReloadCrons finish');
 }
 
@@ -253,7 +262,7 @@ let loadCronHandlers = function (app: Application, manualReload = false) {
     for (let plugin of app.usedPlugins) {
         if (plugin.cronPath) {
             if (!_checkCanRequire(plugin.cronPath)) {
-                logger.error(`插件[${plugin.name}的cronPath[${plugin.cronPath}不存在。]]`);
+                logger.error(`插件[${ plugin.name }的cronPath[${ plugin.cronPath }不存在。]]`);
                 continue;
             }
             let crons = Loader.load(plugin.cronPath, app, manualReload, true, LoaderPathType.PINUS_CRONNER);
@@ -368,7 +377,7 @@ let handleError = function (isGlobal: boolean, server: Server, err: Error, msg: 
         handler = server.app.get(Constants.RESERVED.ERROR_HANDLER);
     }
     if (!handler) {
-        logger.error(`${server.app.serverId} no default error handler msg[${JSON.stringify(msg)}] to resolve unknown exception: sessionId:${JSON.stringify(session.export())} , error stack: ${err.stack}`);
+        logger.error(`${ server.app.serverId } no default error handler msg[${ JSON.stringify(msg) }] to resolve unknown exception: sessionId:${ JSON.stringify(session.export()) } , error stack: ${ err.stack }`);
         utils.invokeCallback(cb, err, resp);
     } else {
         if (handler.length === 5) {
